@@ -32,11 +32,8 @@ _feh()
             for ((i = ${#words[@]} - 1; i > 0; i--)); do
                 if [[ ${words[i]} == -@(C|-fontpath) ]]; then
                     font_path="${words[i + 1]}"
-                    COMPREPLY+=($(
-                        command cd -- "$font_path" 2>/dev/null
-                        compgen -f \
-                            -X "!*.@([tT][tT][fF])" -S / -- "$cur"
-                    ))
+                    _filedir -C "$font_path" ttf
+                    COMPREPLY=("${COMPREPLY[@]/%//}")
                 fi
             done
             compopt -o nospace

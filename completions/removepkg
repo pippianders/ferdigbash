@@ -15,10 +15,7 @@ _removepkg()
     fi
 
     local root=${ROOT:-/}
-    COMPREPLY=($(
-        command cd -- "$root/var/log/packages" 2>/dev/null || return 1
-        compgen -f -- "$cur"
-    ))
+    _filedir -C "$root/var/log/packages"
 } &&
     complete -F _removepkg removepkg
 

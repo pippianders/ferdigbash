@@ -789,10 +789,11 @@ _quote_readline_by_ref()
 
 # This function performs file and directory completion. It's better than
 # simply using 'compgen -f', because it honours spaces in filenames.
-# @param $1  If `-d', complete only on directories.  Otherwise filter/pick only
-#            completions with `.$1' and the uppercase version of it as file
-#            extension.
-#
+# @param $1 Complete filenames matching `.$1' and the uppercase version of it.
+#           Ignored with `-d`.
+# OPTIONS
+#   -C dir  Change to dir before generating completions
+#   -d      Complete only on directories
 _filedir()
 {
     local IFS=$'\n'
@@ -800,12 +801,26 @@ _filedir()
     _tilde "${cur-}" || return
 
     local -a toks
-    local reset arg=${1-}
+    local reset arg chdir=. dir=false
 
-    if [[ $arg == -d ]]; then
+    local OPTIND=1 OPTARG="" OPTERR=0
+    while getopts ":C:d" arg "$@"; do
+        case $arg in
+            C) chdir=$OPTARG ;;
+            d) dir=true ;;
+            *)
+                echo "bash_completion: $FUNCNAME: usage error" >&2
+                return 2
+                ;;
+        esac
+    done
+    shift "$((OPTIND - 1))"
+    arg=${1-}
+
+    if $dir; then
         reset=$(shopt -po noglob)
         set -o noglob
-        toks=($(compgen -d -- "${cur-}"))
+        toks=($(command cd -- "$chdir" 2>/dev/null && compgen -d -- "${cur-}"))
         IFS=' '
         $reset
         IFS=$'\n'
@@ -830,7 +845,10 @@ _filedir()
 
         reset=$(shopt -po noglob)
         set -o noglob
-        toks+=($(compgen "${opts[@]}" -- $quoted))
+        toks+=($(
+            command cd -- "$chdir" 2>/dev/null &&
+                compgen "${opts[@]}" -- $quoted
+        ))
         IFS=' '
         $reset
         IFS=$'\n'
@@ -840,7 +858,10 @@ _filedir()
             $arg && ${#toks[@]} -lt 1 ]] && {
             reset=$(shopt -po noglob)
             set -o noglob
-            toks+=($(compgen -f ${plusdirs+"${plusdirs[@]}"} -- $quoted))
+            toks+=($(
+                command cd -- "$chdir" 2>/dev/null &&
+                    compgen -f ${plusdirs+"${plusdirs[@]}"} -- $quoted
+            ))
             IFS=' '
             $reset
             IFS=$'\n'

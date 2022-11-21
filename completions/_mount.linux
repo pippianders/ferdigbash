@@ -37,17 +37,11 @@ _mount()
             return
             ;;
         -L)
-            COMPREPLY=($(
-                command cd "/dev/disk/by-label/" 2>/dev/null || return
-                compgen -f -- "$cur"
-            ))
+            _filedir -C /dev/disk/by-label
             return
             ;;
         -U)
-            COMPREPLY=($(
-                command cd "/dev/disk/by-uuid/" 2>/dev/null || return
-                compgen -f -- "$cur"
-            ))
+            _filedir -C /dev/disk/by-uuid
             return
             ;;
         -O | --test-opts)

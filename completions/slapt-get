@@ -69,10 +69,7 @@ _slapt_get()
             return
             ;;
         ins) # --remove|--filelist
-            COMPREPLY=($(
-                command cd /var/log/packages
-                compgen -f -- "$cur"
-            ))
+            _filedir -C /var/log/packages
             return
             ;;
         set) # --install-set
