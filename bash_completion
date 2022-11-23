@@ -716,7 +716,7 @@ _get_cword()
 _get_pword()
 {
     if ((COMP_CWORD >= 1)); then
-        _get_cword "${@:-}" 1
+        _get_cword "${@-}" 1
     fi
 }
 
@@ -792,7 +792,7 @@ _quote_readline_by_ref()
 # @param $1 Complete filenames matching `.$1' and the uppercase version of it.
 #           Ignored with `-d`.
 # OPTIONS
-#   -C dir  Change to dir before generating completions
+#   -C dir  Complete entries in specified directory
 #   -d      Complete only on directories
 _filedir()
 {
@@ -801,12 +801,12 @@ _filedir()
     _tilde "${cur-}" || return
 
     local -a toks
-    local reset arg chdir=. dir=false
+    local reset arg chdir="" dir=false
 
     local OPTIND=1 OPTARG="" OPTERR=0
     while getopts ":C:d" arg "$@"; do
         case $arg in
-            C) chdir=$OPTARG ;;
+            C) chdir="$OPTARG/" ;;
             d) dir=true ;;
             *)
                 echo "bash_completion: $FUNCNAME: usage error" >&2
@@ -820,13 +820,13 @@ _filedir()
     if $dir; then
         reset=$(shopt -po noglob)
         set -o noglob
-        toks=($(command cd -- "$chdir" 2>/dev/null && compgen -d -- "${cur-}"))
+        toks=($(compgen -d -- "$chdir${cur-}"))
         IFS=' '
         $reset
         IFS=$'\n'
     else
         local quoted
-        _quote_readline_by_ref "${cur-}" quoted
+        _quote_readline_by_ref "$chdir${cur-}" quoted
 
         # Munge xspec to contain uppercase version too
         # https://lists.gnu.org/archive/html/bug-bash/2010-09/msg00036.html
@@ -845,10 +845,7 @@ _filedir()
 
         reset=$(shopt -po noglob)
         set -o noglob
-        toks+=($(
-            command cd -- "$chdir" 2>/dev/null &&
-                compgen "${opts[@]}" -- $quoted
-        ))
+        toks+=($(compgen "${opts[@]}" -- $quoted))
         IFS=' '
         $reset
         IFS=$'\n'
@@ -858,10 +855,7 @@ _filedir()
             $arg && ${#toks[@]} -lt 1 ]] && {
             reset=$(shopt -po noglob)
             set -o noglob
-            toks+=($(
-                command cd -- "$chdir" 2>/dev/null &&
-                    compgen -f ${plusdirs+"${plusdirs[@]}"} -- $quoted
-            ))
+            toks+=($(compgen -f ${plusdirs+"${plusdirs[@]}"} -- $quoted))
             IFS=' '
             $reset
             IFS=$'\n'
@@ -869,9 +863,19 @@ _filedir()
     fi
 
     if ((${#toks[@]} != 0)); then
-        # 2>/dev/null for direct invocation, e.g. in the _filedir unit test
-        compopt -o filenames 2>/dev/null
-        COMPREPLY+=("${toks[@]}")
+        # compopt 2>/dev/null for direct invocation, e.g. in _filedir unit test
+        if [[ -n $chdir ]]; then
+            local i
+            for i in ${!toks[*]}; do
+                if [[ -d ${toks[i]} ]]; then
+                    toks[i]+=/
+                    compopt -o nospace 2>/dev/null
+                fi
+            done
+        else
+            compopt -o filenames 2>/dev/null
+        fi
+        COMPREPLY+=("${toks[@]#$chdir}")
     fi
 } # _filedir()
 
@@ -1392,9 +1396,9 @@ _available_interfaces()
     local PATH=$PATH:/sbin
 
     COMPREPLY=($({
-        if [[ ${1:-} == -w ]]; then
+        if [[ ${1-} == -w ]]; then
             iwconfig
-        elif [[ ${1:-} == -a ]]; then
+        elif [[ ${1-} == -a ]]; then
             ifconfig || ip -c=never link show up || ip link show up
         else
             ifconfig -a || ip -c=never link show || ip link show
@@ -2247,7 +2251,7 @@ _cd()
 
     # Use standard dir completion if no CDPATH or parameter starts with /,
     # ./ or ../
-    if [[ ! ${CDPATH:-} || $cur == ?(.)?(.)/* ]]; then
+    if [[ ! ${CDPATH-} || $cur == ?(.)?(.)/* ]]; then
         _filedir -d
         return
     fi
@@ -2435,7 +2439,7 @@ complete -F _comp_root_command fakeroot gksu gksudo kdesudo really
 # Return true if the completion should be treated as running as root
 _complete_as_root()
 {
-    [[ $EUID -eq 0 || ${root_command:-} ]]
+    [[ $EUID -eq 0 || ${root_command-} ]]
 }
 
 _longopt()
