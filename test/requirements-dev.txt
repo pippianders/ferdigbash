@@ -2,7 +2,7 @@
 
 -r requirements.txt
 
-black==23.1.0
+black==23.3.0
 mypy==0.971
 pre-commit>=2.4.0
 ruff==0.0.247
